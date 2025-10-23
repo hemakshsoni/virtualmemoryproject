@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIFO VM Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>FIFO Virtual Memory Simulator</h1>
+    
+    <div class="controls">
+        <button id="next-step-btn">Process Next Page</button>
+        <button id="reset-btn">Reset Simulation</button>
+    </div>
+
+    <div class="info-box" id="info-box">
+        Click "Process Next Page" to start...
+    </div>
+
+    <div class="simulation-area">
+        
+        <div class="memory-container">
+            <h2>Secondary Memory (Disk)</h2>
+            <div id="secondary-memory" class="memory-grid">
+                </div>
+        </div>
+        
+        <div class="memory-container">
+            <h2>Main Memory (RAM)</h2>
+            <div id="main-memory" class="memory-grid">
+                </div>
+        </div>
+        
+    </div>
+    
+    <div class="stats-container">
+        <h3>Page Request Queue:</h3>
+        <div id="request-queue-box"></div>
+        <h3>Stats:</h3>
+        <p>Accesses: <span id="access-count">0</span></p>
+        <p>Page Faults: <span id="fault-count">0</span></p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

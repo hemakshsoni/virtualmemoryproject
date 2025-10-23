@@ -1,0 +1,114 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    text-align: center;
+}
+
+.simulation-area {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px auto;
+    max-width: 900px;
+}
+
+.memory-container {
+    border: 2px solid #555;
+    border-radius: 8px;
+    background-color: #fff;
+    padding: 15px;
+    width: 45%;
+}
+
+.memory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 10px;
+    padding: 10px;
+    min-height: 150px;
+}
+
+/* --- Page & Frame Boxes --- */
+.page, .frame {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #007bff;
+    border-radius: 5px;
+    background-color: #e6f2ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: all 0.3s ease;
+}
+
+.frame {
+    border-color: #28a745;
+    background-color: #eafaea;
+}
+
+.frame.empty {
+    background-color: #f8f8f8;
+    border-style: dashed;
+    color: #aaa;
+}
+
+/* --- Controls & Info --- */
+.controls button {
+    font-size: 1.2em;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+#next-step-btn { background-color: #007bff; color: white; }
+#reset-btn { background-color: #6c757d; color: white; }
+
+.info-box {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin: 15px auto;
+    padding: 15px;
+    border-radius: 5px;
+    width: 80%;
+}
+
+.stats-container {
+    margin: 20px auto;
+    width: 80%;
+    text-align: left;
+}
+
+#request-queue-box {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    padding: 10px;
+    font-size: 1.2em;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* --- VISUALIZATION CLASSES --- */
+.highlight-hit {
+    background-color: #28a745 !important; /* Green */
+    color: white;
+    transform: scale(1.1);
+}
+
+.highlight-fault {
+    background-color: #dc3545 !important; /* Red */
+    color: white;
+}
+
+.highlight-evict {
+    background-color: #ffc107 !important; /* Yellow */
+    color: #333;
+    animation: fadeOut 1s forwards;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
