@@ -3,14 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FIFO VM Simulator</title>
+    <title>VM Simulator</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <h1>FIFO Virtual Memory Simulator</h1>
+    <h1>FIFO / LRU Virtual Memory Simulator</h1>
     
     <div class="controls">
+        <div class="control-group">
+            <label for="algo-select">Algorithm:</label>
+            <select id="algo-select">
+                <option value="FIFO">FIFO (First-In, First-Out)</option>
+                <option value="LRU">LRU (Least Recently Used)</option>
+            </select>
+        </div>
         <button id="next-step-btn">Process Next Page</button>
         <button id="reset-btn">Reset Simulation</button>
     </div>
@@ -36,6 +43,9 @@
     </div>
     
     <div class="stats-container">
+        <label for="page-request-input"><b>Page Request String (space-separated):</b></label>
+        <input type="text" id="page-request-input" value="0 1 2 3 0 1 4 0 1 2 3 4">
+        
         <h3>Page Request Queue:</h3>
         <div id="request-queue-box"></div>
         <h3>Stats:</h3>
