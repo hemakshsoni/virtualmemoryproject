@@ -1,3 +1,4 @@
+/* --- Basic Layout --- */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
@@ -67,6 +68,20 @@ body {
 #next-step-btn { background-color: #007bff; color: white; }
 #reset-btn { background-color: #6c757d; color: white; }
 
+.control-group {
+    display: inline-block;
+    margin: 5px;
+}
+.control-group label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+.control-group select {
+    font-size: 1em;
+    padding: 5px;
+}
+
+
 .info-box {
     font-size: 1.2em;
     font-weight: bold;
@@ -80,6 +95,13 @@ body {
     margin: 20px auto;
     width: 80%;
     text-align: left;
+}
+
+#page-request-input {
+    width: 95%;
+    font-size: 1.1em;
+    padding: 8px;
+    margin-bottom: 10px;
 }
 
 #request-queue-box {
