@@ -1,61 +1,101 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const PAGE_REQUEST_LIST = [0, 1, 2, 3, 4, 5, 0, 6, 7, 1, 8, 2, 9, 3, 0, 1];
+    // --- 1. CONFIGURATION & STATE ---
+    let pageRequestList = [];
     const TOTAL_PAGES = 10;
     const TOTAL_FRAMES = 3;
 
     let mainMemory;
-    let fifoQueue;
+    let usageStack; // This is our queue for FIFO or stack for LRU
     let requestIndex;
     let stats;
 
+    // --- 2. HTML ELEMENT REFERENCES ---
     const secondaryMemoryDiv = document.getElementById('secondary-memory');
     const mainMemoryDiv = document.getElementById('main-memory');
     const nextBtn = document.getElementById('next-step-btn');
     const resetBtn = document.getElementById('reset-btn');
     const infoBox = document.getElementById('info-box');
+    const pageRequestInput = document.getElementById('page-request-input');
     const requestQueueBox = document.getElementById('request-queue-box');
     const accessCountSpan = document.getElementById('access-count');
     const faultCountSpan = document.getElementById('fault-count');
+    const algoSelect = document.getElementById('algo-select');
+
+    // --- 3. INITIALIZATION ---
 
     function initialize() {
-        mainMemory = new Array(TOTAL_FRAMES).fill(null);
-        fifoQueue = [];
-        requestIndex = 0;
-        stats = { accesses: 0, faults: 0 };
-
-        secondaryMemoryDiv.innerHTML = '';
-        for (let i = 0; i < TOTAL_PAGES; i++) {
-            const page = document.createElement('div');
-            page.className = 'page';
-            page.id = `page-${i}`;
-            page.innerText = `P${i}`;
-            secondaryMemoryDiv.appendChild(page);
-        }
-
-        mainMemoryDiv.innerHTML = '';
-        for (let i = 0; i < TOTAL_FRAMES; i++) {
-            const frame = document.createElement('div');
-            frame.className = 'frame empty';
-            frame.id = `frame-${i}`;
-            frame.innerText = `Frame ${i}`;
-            mainMemoryDiv.appendChild(frame);
-        }
+        const inputText = pageRequestInput.value;
         
-        updateInfo('Simulation reset. Click "Next Step" to begin.', 'gray');
-        updateRequestQueueDisplay();
-        updateStats();
-        nextBtn.disabled = false;
+        const allEntries = inputText.split(' ')
+                                 .map(s => s.trim())
+                                 .filter(s => s.length > 0);
+        
+        let isValid = true;
+        let parsedList = [];
+
+        if (allEntries.length === 0) {
+            isValid = false;
+        }
+
+        for (const entry of allEntries) {
+            const num = Number(entry);
+            if (!Number.isInteger(num) || num < 0 || num >= TOTAL_PAGES) {
+                isValid = false;
+                break;
+            }
+            parsedList.push(num);
+        }
+
+        if (!isValid) {
+            pageRequestList = [];
+            updateInfo('Error: Input must be space-separated numbers between 0 and 9.', 'red');
+            nextBtn.disabled = true;
+            requestQueueBox.innerHTML = '<em>(No requests)</em>';
+        
+        } else {
+            pageRequestList = parsedList;
+            mainMemory = new Array(TOTAL_FRAMES).fill(null);
+            usageStack = []; // Reset the stack
+            requestIndex = 0;
+            stats = { accesses: 0, faults: 0 };
+
+            secondaryMemoryDiv.innerHTML = '';
+            for (let i = 0; i < TOTAL_PAGES; i++) {
+                const page = document.createElement('div');
+                page.className = 'page';
+                page.id = `page-${i}`;
+                page.innerText = `P${i}`;
+                secondaryMemoryDiv.appendChild(page);
+            }
+
+            mainMemoryDiv.innerHTML = '';
+            for (let i = 0; i < TOTAL_FRAMES; i++) {
+                const frame = document.createElement('div');
+                frame.className = 'frame empty';
+                frame.id = `frame-${i}`;
+                frame.innerText = `Frame ${i}`;
+                mainMemoryDiv.appendChild(frame);
+            }
+            
+            updateInfo('Simulation reset. Click "Next Step" to begin.', 'gray');
+            updateRequestQueueDisplay();
+            updateStats();
+            nextBtn.disabled = false;
+        }
     }
 
+    // --- 4. CORE SIMULATION LOGIC ---
+
     function handleNextStep() {
-        if (requestIndex >= PAGE_REQUEST_LIST.length) {
+        // This check MUST be first
+        if (requestIndex >= pageRequestList.length) {
             updateInfo('Simulation Complete!', 'green');
             nextBtn.disabled = true;
             return;
         }
 
-        const pageToRequest = PAGE_REQUEST_LIST[requestIndex];
+        const pageToRequest = pageRequestList[requestIndex];
         stats.accesses++;
         
         clearHighlights();
@@ -71,6 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
         requestIndex++;
         updateRequestQueueDisplay();
         updateStats();
+
+        // Check if simulation is over *after* incrementing
+        if (requestIndex >= pageRequestList.length) {
+            updateInfo('Simulation Complete!', 'green');
+            nextBtn.disabled = true;
+        }
     }
 
     function handlePageHit(pageNumber, frameIndex) {
@@ -78,6 +124,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const frameDiv = document.getElementById(`frame-${frameIndex}`);
         frameDiv.classList.add('highlight-hit');
+
+        // --- LRU LOGIC ---
+        if (algoSelect.value === 'LRU') {
+            const pageIndexInStack = usageStack.indexOf(pageNumber);
+            if (pageIndexInStack > -1) {
+                usageStack.splice(pageIndexInStack, 1);
+            }
+            usageStack.push(pageNumber);
+        }
     }
 
     function handlePageFault(pageNumber) {
@@ -87,25 +142,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const emptyFrameIndex = mainMemory.indexOf(null);
         
         if (emptyFrameIndex !== -1) {
+            // --- Case A: There is an empty frame ---
             loadPageIntoFrame(pageNumber, emptyFrameIndex);
-            fifoQueue.push(pageNumber);
+            usageStack.push(pageNumber); // Add to end of stack
             
         } else {
-            const victimPage = fifoQueue.shift();
+            // --- Case B: RAM is full. Must evict. ---
+            const algo = algoSelect.value;
+            
+            const victimPage = usageStack.shift(); 
             const victimFrameIndex = mainMemory.indexOf(victimPage);
+            
+            updateInfo(`RAM is full. Evicting Page ${victimPage} from Frame ${victimFrameIndex} (${algo}).`, 'orange');
 
-            updateInfo(`RAM is full. Evicting Page ${victimPage} from Frame ${victimFrameIndex} (FIFO).`, 'orange');
+            // Disable button during animation
+            nextBtn.disabled = true;
 
             const victimFrameDiv = document.getElementById(`frame-${victimFrameIndex}`);
             victimFrameDiv.classList.add('highlight-evict');
 
             setTimeout(() => {
                 loadPageIntoFrame(pageNumber, victimFrameIndex);
-                fifoQueue.push(pageNumber);
-            }, 1000);
+                usageStack.push(pageNumber); // Add new page to end
+                
+                // Re-enable button *only* if sim is not over
+                if (requestIndex < pageRequestList.length) {
+                    nextBtn.disabled = false;
+                }
+            }, 1000); // 1 second for animation
         }
     }
     
+    // --- 5. HELPER & UI FUNCTIONS ---
+
     function loadPageIntoFrame(pageNumber, frameIndex) {
         mainMemory[frameIndex] = pageNumber;
         
@@ -129,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function updateRequestQueueDisplay() {
-        const upcomingRequests = PAGE_REQUEST_LIST.slice(requestIndex);
+        const upcomingRequests = pageRequestList.slice(requestIndex);
         
         if (upcomingRequests.length === 0) {
             requestQueueBox.innerHTML = '<em>(End of queue)</em>';
@@ -147,8 +216,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- 6. START THE SIMULATION ---
     nextBtn.addEventListener('click', handleNextStep);
     resetBtn.addEventListener('click', initialize);
+    algoSelect.addEventListener('change', initialize);
     
-    initialize();
+    initialize(); // Run once on page load
 });
