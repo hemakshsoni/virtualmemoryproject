@@ -1,16 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- 1. CONFIGURATION & STATE ---
+    // CONFIGURATION & STATE
     let pageRequestList = [];
     const TOTAL_PAGES = 10;
     const TOTAL_FRAMES = 3;
 
     let mainMemory;
-    let usageStack; // This is our queue for FIFO or stack for LRU
+    let usageStack; // Used for FIFO and LRU
     let requestIndex;
     let stats;
 
-    // --- 2. HTML ELEMENT REFERENCES ---
+    // HTML ELEMENT REFERENCES
     const secondaryMemoryDiv = document.getElementById('secondary-memory');
     const mainMemoryDiv = document.getElementById('main-memory');
     const nextBtn = document.getElementById('next-step-btn');
@@ -22,8 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const faultCountSpan = document.getElementById('fault-count');
     const algoSelect = document.getElementById('algo-select');
 
-    // --- 3. INITIALIZATION ---
-
+    // INITIALIZATION
     function initialize() {
         const inputText = pageRequestInput.value;
         
@@ -88,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 4. CORE SIMULATION LOGIC ---
 
     function handleNextStep() {
-        // This check MUST be first
         if (requestIndex >= pageRequestList.length) {
             updateInfo('Simulation Complete!', 'green');
             nextBtn.disabled = true;
@@ -112,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRequestQueueDisplay();
         updateStats();
 
-        // Check if simulation is over *after* incrementing
         if (requestIndex >= pageRequestList.length) {
             updateInfo('Simulation Complete!', 'green');
             nextBtn.disabled = true;
@@ -125,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const frameDiv = document.getElementById(`frame-${frameIndex}`);
         frameDiv.classList.add('highlight-hit');
 
-        // --- LRU LOGIC ---
         if (algoSelect.value === 'LRU') {
             const pageIndexInStack = usageStack.indexOf(pageNumber);
             if (pageIndexInStack > -1) {
@@ -138,24 +134,31 @@ document.addEventListener('DOMContentLoaded', () => {
     function handlePageFault(pageNumber) {
         stats.faults++;
         updateInfo(`Page ${pageNumber} not in RAM. (Page Fault)`, 'red');
-
+        
+        const algo = algoSelect.value;
         const emptyFrameIndex = mainMemory.indexOf(null);
         
         if (emptyFrameIndex !== -1) {
-            // --- Case A: There is an empty frame ---
+            // Case A: There is an empty frame
             loadPageIntoFrame(pageNumber, emptyFrameIndex);
-            usageStack.push(pageNumber); // Add to end of stack
+            if (algo === 'FIFO' || algo === 'LRU') {
+                usageStack.push(pageNumber); // Add to end of stack
+            }
             
         } else {
-            // --- Case B: RAM is full. Must evict. ---
-            const algo = algoSelect.value;
+            // RAM is full. Must evict.
+            let victimPage;
             
-            const victimPage = usageStack.shift(); 
+            if (algo === 'FIFO' || algo === 'LRU') {
+                victimPage = usageStack.shift(); 
+            } else { // algo === 'OPT'
+                victimPage = findOptimalVictim();
+            }
+            
             const victimFrameIndex = mainMemory.indexOf(victimPage);
             
             updateInfo(`RAM is full. Evicting Page ${victimPage} from Frame ${victimFrameIndex} (${algo}).`, 'orange');
 
-            // Disable button during animation
             nextBtn.disabled = true;
 
             const victimFrameDiv = document.getElementById(`frame-${victimFrameIndex}`);
@@ -163,17 +166,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
             setTimeout(() => {
                 loadPageIntoFrame(pageNumber, victimFrameIndex);
-                usageStack.push(pageNumber); // Add new page to end
+                if (algo === 'FIFO' || algo === 'LRU') {
+                    usageStack.push(pageNumber); // Add new page to end
+                }
                 
-                // Re-enable button *only* if sim is not over
                 if (requestIndex < pageRequestList.length) {
                     nextBtn.disabled = false;
                 }
-            }, 1000); // 1 second for animation
+            }, 1000);
         }
     }
     
-    // --- 5. HELPER & UI FUNCTIONS ---
+    // NEW HELPER FUNCTION FOR OPT
+
+    function findOptimalVictim() {
+        // Get the "future" part of the request list
+        const futureRequests = pageRequestList.slice(requestIndex + 1);
+        let victimPage = -1;
+        let farthestNextUse = -1;
+
+        // Check each page currently in RAM
+        for (const pageInRam of mainMemory) {
+            
+            // Find the next time this page is used
+            const nextUseIndex = futureRequests.indexOf(pageInRam);
+
+            // Case 1: Page is never used again. This is the perfect victim.
+            if (nextUseIndex === -1) {
+                victimPage = pageInRam;
+                return victimPage; // Found the best, return immediately
+            }
+
+            // Case 2: Page is used again. Check if it's farther than the current victim.
+            if (nextUseIndex > farthestNextUse) {
+                farthestNextUse = nextUseIndex;
+                victimPage = pageInRam;
+            }
+        }
+        
+        // After checking all pages, return the one that was used farthest in the future
+        return victimPage;
+    }
+
+    //HELPER & UI FUNCTIONS
 
     function loadPageIntoFrame(pageNumber, frameIndex) {
         mainMemory[frameIndex] = pageNumber;
@@ -216,10 +251,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 6. START THE SIMULATION ---
+    // START THE SIMULATION
     nextBtn.addEventListener('click', handleNextStep);
     resetBtn.addEventListener('click', initialize);
     algoSelect.addEventListener('change', initialize);
     
-    initialize(); // Run once on page load
+    initialize();
 });
